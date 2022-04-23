@@ -1,77 +1,55 @@
-
-# Define your AWS configuration
 provider "aws" {
-  profile = "default"
   region = "us-east-1"
-}
-
-# Define your S3 AWS Resource
-resource  "aws_s3_bucket" "tf_course" {
-  bucket = "soumilshah1995001"
-  acl    = "private"
-}
-
-# Default VPC
-resource "aws_default_vpc" "default" {
+  access_key = "XXX"
+  secret_key = "XXX"
 
 }
 
-# Security Group
-resource "aws_security_group" "prod_web" {
-  # if you dont give it will give a random name better to give something
-  name        = "prod_web"
-  description = "Allow standard Http and Https Port inboud  and everything outbound"
+# =================================
+variable "bucket-name" {
+  default = "XXXX"
+}
+#================================
 
-  ingress {
-    from_port = 80        # Outbound Traffic
-    protocol  = "tcp"     # protocol we will use is tcp
-    to_port   = 80        # outbound port is also 80
+resource "aws_s3_bucket" "create-s3-bucket" {
 
-    # if you say "0.0.0.0/0" mean allow everything
-    cidr_blocks = [
-      "67.84.49.187/32",
-    ]
-  }
+  bucket = "${var.bucket-name}"
 
-  # ingress mean inbound traffic we are configuring for https now
-  ingress {
-    from_port = 443        # Outbound Traffic
-    protocol  = "tcp"     # protocol we will use is tcp
-    to_port   = 443        # outbound port is also 80
+  acl = "private"
 
-    # if you say "0.0.0.0/0" mean allow everything
-    cidr_blocks = [
-      "67.84.49.187/32",
-    ]
-  }
+  lifecycle_rule {
+    id = "archive"
+    enabled = true
+    transition {
+      days = 30
+      storage_class = "STANDARD_IA"
+    }
 
-  # outBound traffic -1 mean allow all protocol
-  egress {
-    from_port = 0
-    protocol = "-1"
-    to_port = 0
-
-    cidr_blocks = [
-      "67.84.49.187/32",
-    ]
+    transition {
+      days          = 60
+      storage_class = "GLACIER"
+    }
 
   }
 
-  # Best Recommend practise to put tags
-  tags =  {
-    "Terraform" : "true"
+  versioning {
+    enabled = true
+  }
+
+  tags = {
+    Enviroment: "QA"
+  }
+
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "aws:kms"
+      }
+    }
   }
 }
 
-resource "aws_instance" "prod_web" {
-  ami = "ami-03c8adc67e56c7f1d"
-  instance_type = "t2.nano"
-
-  vpc_security_group_ids = [
-  aws_security_group.prod_web
-  ]
-
-  tags =  {
-    "Terraform" : "true"
-  }
+resource "aws_s3_bucket_metric" "enable-metrics-bucket" {
+  bucket = "${var.bucket-name}"
+  name   = "EntireBucket"
 }
